@@ -127,16 +127,33 @@ func initGPSSerial() bool {
 	var device string
 	baudrate := int(9600)
 	isSirfIV := bool(false)
-
+	isGlobalTop := bool(false)
 	log.Printf("Configuring GPS\n")
 
 	if _, err := os.Stat("/dev/ttyUSB0"); err == nil {
-		isSirfIV = true
-		baudrate = 4800
 		device = "/dev/ttyUSB0"
+		// blindly assume connected device is Globaltop GPS since baud rate is 9600
+		serialConfig = &serial.Config{Name: device, Baud: baudrate}
+	p, err := serial.OpenPort(serialConfig)
+	if err != nil {
+		log.Printf("serial port err: %s\n", err.Error())
+		return false
+	}
+		p.Write(makeNMEACmd($"PMTK251,38400")) /*set Globaltop baud to 38400*/
+		time.Sleep(250 * time.Millisecond)
+		p.Write(makeNMEACmd($"$PMTK220, 200")) /*set Globaltop update rate to 5 Hz*/
+		p.Write(makeNMEACmd($"PMTK301,2")) /*set Globaltop DGPS Mode to WAAS*/
+		validateNMEAChecksum(s string) 
+	if 	processNMEALine(l string) {
+		if x[0] == "PMTK" { // Then we have a valid response from Globaltop
+		isGlobalTop = true
+		else if {
+			isSirfIV = true
+			baudrate = 4800
+			{
 	} else if _, err := os.Stat("/dev/ttyACM0"); err == nil {
 		device = "/dev/ttyACM0"
-	} else if _, err := os.Stat("/dev/ttyAMA0"); err == nil {
+	} else if _, err := os.Stat("/dev/ttyAMA0"); err == nil { 
 		device = "/dev/ttyAMA0"
 	} else {
 		log.Printf("No suitable device found.\n")
